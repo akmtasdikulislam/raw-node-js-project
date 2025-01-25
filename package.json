@@ -4,7 +4,8 @@
   "description": "A RESTFul API to monitor up or down time of user defined links",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js",
+    "start": "set NODE_ENV=staging&& nodemon index",
+    "production": "set NODE_ENV=production&& nodemon index",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

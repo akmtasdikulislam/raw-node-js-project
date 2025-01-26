@@ -10,6 +10,7 @@
 const data = require("../../lib/data");
 const { hash } = require("../../helpers/utilities");
 const { parseJSON } = require("../../helpers/utilities");
+const tokenHandler = require("./tokenHandler");
 
 // Module scaffolding
 const handler = {};
@@ -88,7 +89,6 @@ handler._users.post = (requestProperties, callback) => {
   }
 };
 
-// @TODO: Authenctication check
 handler._users.get = (requestProperties, callback) => {
   // Check if user already exists in the system
   const phone =
@@ -98,19 +98,31 @@ handler._users.get = (requestProperties, callback) => {
       : false;
 
   if (phone) {
-    // Lookup the user
-    data.read("users", phone, (err, data) => {
-      const userData = {
-        ...parseJSON(data),
-      };
-      if (!err && userData) {
-        // Remove the hashed password
-        delete userData.password;
-        callback(200, userData);
-      } else {
-        callback(404, {
-          error: "User not found",
+    // Verify token
+    let token =
+      typeof requestProperties.headersObject.token === "string"
+        ? requestProperties.headersObject.token
+        : false;
+
+    tokenHandler._token.verify(token, phone, (tokenId) => {
+      if (tokenId) {
+        // Lookup the user
+        data.read("users", phone, (err, data) => {
+          const userData = {
+            ...parseJSON(data),
+          };
+          if (!err && userData) {
+            // Remove the hashed password
+            delete userData.password;
+            callback(200, userData);
+          } else {
+            callback(404, {
+              error: "User not found",
+            });
+          }
         });
+      } else {
+        callback(403, { message: "Authentication failed" });
       }
     });
   } else {
@@ -120,7 +132,6 @@ handler._users.get = (requestProperties, callback) => {
   }
 };
 
-// @TODO: Authenctication check
 handler._users.put = (requestProperties, callback) => {
   // Check validation of the data
   const phone =
@@ -149,36 +160,48 @@ handler._users.put = (requestProperties, callback) => {
 
   if (phone) {
     if (firstName || lastName || password) {
-      // Lookup the user
-      data.read("users", phone, (err, userData) => {
-        if (!err && userData) {
-          const user = {
-            ...parseJSON(userData),
-          };
-          if (firstName) {
-            user.firstName = firstName;
-          }
-          if (lastName) {
-            user.lastName = lastName;
-          }
-          if (password) {
-            user.password = hash(password);
-          }
+      // Verify token
+      let token =
+        typeof requestProperties.headersObject.token === "string"
+          ? requestProperties.headersObject.token
+          : false;
 
-          // Store the user in the system
-          data.update("users", phone, user, (err) => {
-            if (!err) {
-              callback(200, { message: "User updated successfully" });
+      tokenHandler._token.verify(token, phone, (tokenId) => {
+        if (tokenId) {
+          // Lookup the user
+          data.read("users", phone, (err, userData) => {
+            if (!err && userData) {
+              const user = {
+                ...parseJSON(userData),
+              };
+              if (firstName) {
+                user.firstName = firstName;
+              }
+              if (lastName) {
+                user.lastName = lastName;
+              }
+              if (password) {
+                user.password = hash(password);
+              }
+
+              // Store the user in the system
+              data.update("users", phone, user, (err) => {
+                if (!err) {
+                  callback(200, { message: "User updated successfully" });
+                } else {
+                  callback(500, {
+                    error: "Failed to update user data in the system",
+                  });
+                }
+              });
             } else {
-              callback(500, {
-                error: "Failed to update user data in the system",
+              callback(404, {
+                error: "User not found",
               });
             }
           });
         } else {
-          callback(404, {
-            error: "User not found",
-          });
+          callback(403, { message: "Authentication failed" });
         }
       });
     } else {
@@ -202,22 +225,34 @@ handler._users.delete = (requestProperties, callback) => {
       ? requestProperties.queryStringObject.phone
       : false;
   if (phone) {
-    // Lookup the user
-    data.read("users", phone, (err, userData) => {
-      if (!err && userData) {
-        data.delete("users", phone, (err) => {
-          if (!err) {
-            callback(200, { message: "User deleted successfully" });
+    // Verify token
+    let token =
+      typeof requestProperties.headersObject.token === "string"
+        ? requestProperties.headersObject.token
+        : false;
+
+    tokenHandler._token.verify(token, phone, (tokenId) => {
+      if (tokenId) {
+        // Lookup the user
+        data.read("users", phone, (err, userData) => {
+          if (!err && userData) {
+            data.delete("users", phone, (err) => {
+              if (!err) {
+                callback(200, { message: "User deleted successfully" });
+              } else {
+                callback(500, {
+                  error: "Failed to delete user data in the system",
+                });
+              }
+            });
           } else {
-            callback(500, {
-              error: "Failed to delete user data in the system",
+            callback(404, {
+              error: "User not found",
             });
           }
         });
       } else {
-        callback(404, {
-          error: "User not found",
-        });
+        callback(403, { message: "Authentication failed" });
       }
     });
   } else {

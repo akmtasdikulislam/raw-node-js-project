@@ -1,33 +1,26 @@
 /*
- * Title: Uptime Monitoring Application
- * Decription: A RESTFul API to monitor up or down time of user defined links
+ * Title: Project Initial file
+ * Decription: Initial file to start the node server and workers
  * Author: Akm Tasdikul Islam
- * Date: 21/01/2025
+ * Date: 26/01/2025
  *
  */
 
 // Dependencies
-const http = require("http");
-const { handleReqRes } = require("./helpers/handleReqRes");
-const environment = require("./helpers/environments");
+const server = require("./lib/server");
+const workers = require("./lib/workers");
 
 // App object - module scaffolding
 const app = {};
 
-// Configuration
-app.config = {};
-
-// Create server
-app.createServer = () => {
-  const server = http.createServer(app.handleReqRes);
-  server.listen(environment.port, () => {
-    console.log(`environment variable is ${process.env.NODE_ENV}`);
-    console.log(`The server is listening on port ${environment.port}`);
-  });
+app.init = () => {
+  // Start the server
+  server.init();
+  // Start the workers
+  workers.init();
 };
 
-// Handle Request Response
-app.handleReqRes = handleReqRes;
+app.init();
 
-// Start the server
-app.createServer();
+// Export the app
+module.exports = app;
